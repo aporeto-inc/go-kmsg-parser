@@ -40,7 +40,7 @@ type Parser interface {
 	Parse() <-chan Message
 	// SetLogger sets the logger that will be used to report malformed kernel
 	// ringbuffer lines or unexpected kmsg read errors.
-	ParseLimit(num int) ([]*Message, error)
+	ParseLimit(num int) (Messages, error)
 	SetLogger(Logger)
 	// Close closes the underlying kmsg reader for this parser
 	Close() error
@@ -160,7 +160,7 @@ func (p *parser) Parse() <-chan Message {
 
 // ParseLimit is same as Parse but can be configured to return last
 // few lines from the buffer.
-func (p *parser) ParseLimit(num int) ([]*Message, error) {
+func (p *parser) ParseLimit(num int) (Messages, error) {
 
 	fd := int(p.kmsgReader.Fd())
 	if err := syscall.SetNonblock(fd, true); err != nil {

@@ -20,7 +20,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/euank/go-kmsg-parser/kmsgparser"
 )
@@ -41,9 +40,10 @@ func main() {
 			log.Fatalf("could not tail: %v", err)
 		}
 	}
-	kmsg := parser.Parse()
-
-	for msg := range kmsg {
-		fmt.Printf("(%d) - %s: %s", msg.SequenceNumber, msg.Timestamp.Format(time.RFC3339Nano), msg.Message)
+	kmsgs, err := parser.ParseLimit(3)
+	if err != nil {
+		log.Fatalf("could not parse: %v", err)
 	}
+
+	fmt.Println(kmsgs.String())
 }
