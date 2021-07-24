@@ -1,4 +1,4 @@
-module github.com/euank/go-kmsg-parser
+module github.com/aporeto-inc/go-kmsg-parser
 
 go 1.14
 
