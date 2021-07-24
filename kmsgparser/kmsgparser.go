@@ -40,6 +40,7 @@ type Parser interface {
 	Parse() <-chan Message
 	// SetLogger sets the logger that will be used to report malformed kernel
 	// ringbuffer lines or unexpected kmsg read errors.
+	ParseLimit(num int) ([]*Message, error)
 	SetLogger(Logger)
 	// Close closes the underlying kmsg reader for this parser
 	Close() error
@@ -81,7 +82,7 @@ type ReadSeekCloser interface {
 
 type parser struct {
 	log        Logger
-	kmsgReader ReadSeekCloser
+	kmsgReader *os.File
 	bootTime   time.Time
 }
 
@@ -155,6 +156,50 @@ func (p *parser) Parse() <-chan Message {
 	}()
 
 	return output
+}
+
+// ParseLimit is same as Parse but can be configured to return last
+// few lines from the buffer.
+func (p *parser) ParseLimit(num int) ([]*Message, error) {
+
+	fd := int(p.kmsgReader.Fd())
+	if err := syscall.SetNonblock(fd, true); err != nil {
+		return nil, err
+	}
+
+	var msgs []*Message
+	msg := make([]byte, 8192)
+
+	for {
+		// Each read call gives us one full message.
+		// https://www.kernel.org/doc/Documentation/ABI/testing/dev-kmsg
+		n, err := syscall.Read(fd, msg)
+		if err != nil {
+			if err == syscall.EPIPE {
+				continue
+			}
+
+			if err == io.EOF || err == syscall.EAGAIN {
+				break
+			}
+
+			break
+		}
+
+		msgStr := string(msg[:n])
+		message, err := p.parseMessage(msgStr)
+		if err != nil {
+			continue
+		}
+
+		msgs = append(msgs, &message)
+	}
+
+	if len(msgs) <= num {
+		return msgs, nil
+	}
+
+	return msgs[len(msgs)-num:], nil
 }
 
 func (p *parser) parseMessage(input string) (Message, error) {
