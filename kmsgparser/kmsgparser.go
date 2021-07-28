@@ -195,7 +195,7 @@ func (p *parser) ParseLimit(num int) (Messages, error) {
 		msgs = append(msgs, &message)
 	}
 
-	if len(msgs) <= num {
+	if len(msgs) <= num || num <= 0 {
 		return msgs, nil
 	}
 
